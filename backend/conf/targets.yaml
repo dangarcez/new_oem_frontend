@@ -1,0 +1,362 @@
+- site: null
+  endpoint: http://localhost:8000
+  name: oraemc
+  targets:
+  - id: 240D79C7320E221DE06400144FFBE115
+    name: occp40bc
+    typeName: rac_database
+    tags:
+      rac_database: occp40bc
+      target_name: occp40bc
+      target_type: rac_database
+  - id: 3107639B0159F1634DCC581E477241AA
+    name: occp40bc_occp40bc3
+    typeName: oracle_database
+    dg_role: Physical Standby
+    listener_name: LISTENER_cadecrk01cl01vm03.intra.caixa.gov.br
+    machine_name: cadecrk01cl01vm03.intra.caixa.gov.br
+    tags:
+      dg_role: Physical Standby
+      listener_name: cadecrk01cl01vm03_lstnr
+      machine_name: cadecrk01cl01vm03
+      oracle_database: occp40bc_occp40bc3
+      rac_database: occp40bc
+      target_name: occp40bc_occp40bc3
+      target_type: oracle_database
+  - id: 222F3F2BAC58D57596CE3191F29C787E
+    name: cadecrk01cl01vm03.intra.caixa.gov.br
+    typeName: host
+    tags:
+      host: cadecrk01cl01vm03
+      target_name: cadecrk01cl01vm03
+      target_type: host
+  - id: 969111313D6F75179B35AEDBAAF4A250
+    name: LISTENER_cadecrk01cl01vm03.intra.caixa.gov.br
+    typeName: oracle_listener
+    tags:
+      oracle_listener: cadecrk01cl01vm03_lstnr
+      target_name: cadecrk01cl01vm03_lstnr
+      target_type: oracle_listener
+  - id: CBD87648426B3D784CE2CF46AE56D889
+    name: occp40bc_occp40bc1
+    typeName: oracle_database
+    dg_role: Physical Standby
+    listener_name: LISTENER_cadecrk01cl01vm01.intra.caixa.gov.br
+    machine_name: cadecrk01cl01vm01.intra.caixa.gov.br
+    tags:
+      dg_role: Physical Standby
+      listener_name: cadecrk01cl01vm01_lstnr
+      machine_name: cadecrk01cl01vm01
+      oracle_database: occp40bc_occp40bc1
+      rac_database: occp40bc
+      target_name: occp40bc_occp40bc1
+      target_type: oracle_database
+  - id: 32389351CAE76EF77608BE6E4214A63D
+    name: cadecrk01cl01vm01.intra.caixa.gov.br
+    typeName: host
+    tags:
+      host: cadecrk01cl01vm01
+      target_name: cadecrk01cl01vm01
+      target_type: host
+  - id: 87EC31B54ECFC863324B09BA2C242D9E
+    name: LISTENER_cadecrk01cl01vm01.intra.caixa.gov.br
+    typeName: oracle_listener
+    tags:
+      oracle_listener: cadecrk01cl01vm01_lstnr
+      target_name: cadecrk01cl01vm01_lstnr
+      target_type: oracle_listener
+  - id: DD41D53664FFF6198C858E9B9BC5B0F5
+    name: occp40bc_occp40bc2
+    typeName: oracle_database
+    dg_role: Physical Standby
+    listener_name: LISTENER_cadecrk01cl01vm02.intra.caixa.gov.br
+    machine_name: cadecrk01cl01vm02.intra.caixa.gov.br
+    tags:
+      dg_role: Physical Standby
+      listener_name: cadecrk01cl01vm02_lstnr
+      machine_name: cadecrk01cl01vm02
+      oracle_database: occp40bc_occp40bc2
+      rac_database: occp40bc
+      target_name: occp40bc_occp40bc2
+      target_type: oracle_database
+  - id: 4DA580CF40B750221ED26CCADE11EFF0
+    name: cadecrk01cl01vm02.intra.caixa.gov.br
+    typeName: host
+    tags:
+      host: cadecrk01cl01vm02
+      target_name: cadecrk01cl01vm02
+      target_type: host
+  - id: 1C26C3E5842BE719951B2C24F55D4BA5
+    name: LISTENER_cadecrk01cl01vm02.intra.caixa.gov.br
+    typeName: oracle_listener
+    tags:
+      oracle_listener: cadecrk01cl01vm02_lstnr
+      target_name: cadecrk01cl01vm02_lstnr
+      target_type: oracle_listener
+  - id: A2624D2E24EAB8B63D9EC68F36FA8FA7
+    name: occs40bc
+    typeName: rac_database
+    tags:
+      rac_database: occs40bc
+      target_name: occs40bc
+      target_type: rac_database
+  - id: 4F93B731025C2B09B2B15242F8E75023
+    name: occs40bc_occs40bc2
+    typeName: oracle_database
+    dg_role: Primary
+    listener_name: LISTENER_dadecrk01cl01vm02.intra.caixa.gov.br
+    machine_name: dadecrk01cl01vm02.intra.caixa.gov.br
+    tags:
+      dg_role: Primary
+      listener_name: dadecrk01cl01vm02_lstnr
+      machine_name: dadecrk01cl01vm02
+      oracle_database: occs40bc_occs40bc2
+      rac_database: occs40bc
+      target_name: occs40bc_occs40bc2
+      target_type: oracle_database
+  - id: 24106991E97B7446E06400144FFBE115
+    name: cdbp51bc_sys
+    typeName: oracle_dbsys
+    tags:
+      oracle_dbsys: cdbp51bc_sys
+      target_name: cdbp51bc_sys
+      target_type: oracle_dbsys
+  - id: 24106991E97C7446E06400144FFBE115
+    name: cdbp51bc
+    typeName: rac_database
+    tags:
+      oracle_dbsys: cdbp51bc_sys
+      rac_database: cdbp51bc
+      target_name: cdbp51bc
+      target_type: rac_database
+  - id: 2410FA509A1B22CBE06400144FFB0AE4
+    name: cdbp51bc_CDBP51BCPDB001
+    typeName: oracle_pdb
+    tags:
+      oracle_dbsys: cdbp51bc_sys
+      oracle_pdb: cdbp51bc_CDBP51BCPDB001
+      rac_database: cdbp51bc
+      target_name: cdbp51bc_CDBP51BCPDB001
+      target_type: oracle_pdb
+  - id: 24106991E9AF7446E06400144FFBE115
+    name: cdbp51bc_cdbp51bc2
+    typeName: oracle_database
+    dg_role: Physical Standby
+    listener_name: LISTENER_cadecrk01cl01vm02.intra.caixa.gov.br
+    machine_name: cadecrk01cl01vm02.intra.caixa.gov.br
+    tags:
+      dg_role: Physical Standby
+      listener_name: cadecrk01cl01vm02_lstnr
+      machine_name: cadecrk01cl01vm02
+      oracle_database: cdbp51bc_cdbp51bc2
+      oracle_dbsys: cdbp51bc_sys
+      rac_database: cdbp51bc
+      target_name: cdbp51bc_cdbp51bc2
+      target_type: oracle_database
+  - id: 2410FA509A1922CBE06400144FFB0AE4
+    name: cdbp51bc_cdbp51bc1
+    typeName: oracle_database
+    dg_role: Physical Standby
+    listener_name: LISTENER_cadecrk01cl01vm01.intra.caixa.gov.br
+    machine_name: cadecrk01cl01vm01.intra.caixa.gov.br
+    tags:
+      dg_role: Physical Standby
+      listener_name: cadecrk01cl01vm01_lstnr
+      machine_name: cadecrk01cl01vm01
+      oracle_database: cdbp51bc_cdbp51bc1
+      oracle_dbsys: cdbp51bc_sys
+      rac_database: cdbp51bc
+      target_name: cdbp51bc_cdbp51bc1
+      target_type: oracle_database
+  - id: 2410FA509A1A22CBE06400144FFB0AE4
+    name: cdbp51bc_cdbp51bc3
+    typeName: oracle_database
+    dg_role: Physical Standby
+    listener_name: LISTENER_cadecrk01cl01vm03.intra.caixa.gov.br
+    machine_name: cadecrk01cl01vm03.intra.caixa.gov.br
+    tags:
+      dg_role: Physical Standby
+      listener_name: cadecrk01cl01vm03_lstnr
+      machine_name: cadecrk01cl01vm03
+      oracle_database: cdbp51bc_cdbp51bc3
+      oracle_dbsys: cdbp51bc_sys
+      rac_database: cdbp51bc
+      target_name: cdbp51bc_cdbp51bc3
+      target_type: oracle_database
+  - id: 384FEA1AFA2C325FE06400144FFB0AE4
+    name: cdbs51bc
+    typeName: rac_database
+    tags:
+      oracle_dbsys: cdbp51bc_sys
+      rac_database: cdbs51bc
+      target_name: cdbs51bc
+      target_type: rac_database
+  - id: 384FEA1AFA84325FE06400144FFB0AE4
+    name: cdbs51bc_CDBP51BCPDB001
+    typeName: oracle_pdb
+    tags:
+      oracle_dbsys: cdbp51bc_sys
+      oracle_pdb: cdbs51bc_CDBP51BCPDB001
+      rac_database: cdbs51bc
+      target_name: cdbs51bc_CDBP51BCPDB001
+      target_type: oracle_pdb
+  - id: 384FEA1AFA29325FE06400144FFB0AE4
+    name: cdbs51bc_cdbs51bc1
+    typeName: oracle_database
+    dg_role: Primary
+    listener_name: LISTENER_dadecrk01cl01vm01.intra.caixa.gov.br
+    machine_name: dadecrk01cl01vm01.intra.caixa.gov.br
+    tags:
+      dg_role: Primary
+      listener_name: dadecrk01cl01vm01_lstnr
+      machine_name: dadecrk01cl01vm01
+      oracle_database: cdbs51bc_cdbs51bc1
+      oracle_dbsys: cdbp51bc_sys
+      rac_database: cdbs51bc
+      target_name: cdbs51bc_cdbs51bc1
+      target_type: oracle_database
+  - id: 384FEA1AFA2A325FE06400144FFB0AE4
+    name: cdbs51bc_cdbs51bc2
+    typeName: oracle_database
+    dg_role: Primary
+    listener_name: LISTENER_dadecrk01cl01vm02.intra.caixa.gov.br
+    machine_name: dadecrk01cl01vm02.intra.caixa.gov.br
+    tags:
+      dg_role: Primary
+      listener_name: dadecrk01cl01vm02_lstnr
+      machine_name: dadecrk01cl01vm02
+      oracle_database: cdbs51bc_cdbs51bc2
+      oracle_dbsys: cdbp51bc_sys
+      rac_database: cdbs51bc
+      target_name: cdbs51bc_cdbs51bc2
+      target_type: oracle_database
+  - id: 384FEA1AFA2B325FE06400144FFB0AE4
+    name: cdbs51bc_cdbs51bc3
+    typeName: oracle_database
+    tags:
+      oracle_database: cdbs51bc_cdbs51bc3
+      oracle_dbsys: cdbp51bc_sys
+      rac_database: cdbs51bc
+      target_name: cdbs51bc_cdbs51bc3
+      target_type: oracle_database
+  - id: 79E5CCE902CFABA240ADFAC656DE5BD5
+    name: dadecrk01cl01vm02.intra.caixa.gov.br
+    typeName: host
+    tags:
+      host: dadecrk01cl01vm02
+      target_name: dadecrk01cl01vm02
+      target_type: host
+  - id: EA9C6FF1582AC4E46B2BAD39FFA0E289
+    name: LISTENER_dadecrk01cl01vm02.intra.caixa.gov.br
+    typeName: oracle_listener
+    tags:
+      oracle_listener: dadecrk01cl01vm02_lstnr
+      target_name: dadecrk01cl01vm02_lstnr
+      target_type: oracle_listener
+  - id: 6B5BCE19D09562E178E5D033953F0ECD
+    name: occs40bc_occs40bc1
+    typeName: oracle_database
+    dg_role: Primary
+    listener_name: LISTENER_dadecrk01cl01vm01.intra.caixa.gov.br
+    machine_name: dadecrk01cl01vm01.intra.caixa.gov.br
+    tags:
+      dg_role: Primary
+      listener_name: dadecrk01cl01vm01_lstnr
+      machine_name: dadecrk01cl01vm01
+      oracle_database: occs40bc_occs40bc1
+      rac_database: occs40bc
+      target_name: occs40bc_occs40bc1
+      target_type: oracle_database
+  - id: E9163A6AC6B60DD53BDF1208FD3019D8
+    name: dadecrk01cl01vm01.intra.caixa.gov.br
+    typeName: host
+    tags:
+      host: dadecrk01cl01vm01
+      target_name: dadecrk01cl01vm01
+      target_type: host
+  - id: BEDCF202C97C7C889C3E6EE97E58AD76
+    name: LISTENER_dadecrk01cl01vm01.intra.caixa.gov.br
+    typeName: oracle_listener
+    tags:
+      oracle_listener: dadecrk01cl01vm01_lstnr
+      target_name: dadecrk01cl01vm01_lstnr
+      target_type: oracle_listener
+  - id: A46EB31F48949D18AF436E417F27377E
+    name: occs40bc_occs40bc3
+    typeName: oracle_database
+    dg_role: Primary
+    listener_name: LISTENER_dadecrk01cl01vm03.intra.caixa.gov.br
+    machine_name: dadecrk01cl01vm03.intra.caixa.gov.br
+    tags:
+      dg_role: Primary
+      listener_name: dadecrk01cl01vm03_lstnr
+      machine_name: dadecrk01cl01vm03
+      oracle_database: occs40bc_occs40bc3
+      rac_database: occs40bc
+      target_name: occs40bc_occs40bc3
+      target_type: oracle_database
+  - id: D271E225533E456ECBDFD5F18DBBE8D1
+    name: dadecrk01cl01vm03.intra.caixa.gov.br
+    typeName: host
+    tags:
+      host: dadecrk01cl01vm03
+      target_name: dadecrk01cl01vm03
+      target_type: host
+  - id: 71A65C08870F99753CC5DC7EB78254DB
+    name: LISTENER_dadecrk01cl01vm03.intra.caixa.gov.br
+    typeName: oracle_listener
+    tags:
+      oracle_listener: dadecrk01cl01vm03_lstnr
+      target_name: dadecrk01cl01vm03_lstnr
+      target_type: oracle_listener
+  - id: 1C36B22F00028C781F32D7C44219A9AE
+    name: cdbp06ng_sys
+    typeName: oracle_dbsys
+    tags:
+      target_name: cdbp06ng_sys
+      target_type: oracle_dbsys
+      oracle_dbsys: cdbp06ng_sys
+  - id: C5F51796171B5671431A5B08B678933F
+    name: cdbp06ng
+    typeName: rac_database
+    tags:
+      target_name: cdbp06ng
+      target_type: rac_database
+      rac_database: cdbp06ng
+      oracle_dbsys: cdbp06ng_sys
+  - id: AEA437C9FFAF08C798588BCF6725A745
+    name: cdbp06ng_CDBP06NGPDB001
+    typeName: oracle_pdb
+    tags:
+      target_name: cdbp06ng_CDBP06NGPDB001
+      target_type: oracle_pdb
+      oracle_pdb: cdbp06ng_CDBP06NGPDB001
+      oracle_dbsys: cdbp06ng_sys
+      rac_database: cdbp06ng
+  - id: 3BF0A1A22732251CE2EE97C3CE668FBB
+    name: cdbp06ng_cdbp06ng2
+    typeName: oracle_database
+    tags:
+      target_name: cdbp06ng_cdbp06ng2
+      target_type: oracle_database
+      oracle_database: cdbp06ng_cdbp06ng2
+      oracle_dbsys: cdbp06ng_sys
+      rac_database: cdbp06ng
+  - id: 67D19238FD429FB1D99B76A9421FFA9C
+    name: cdbp06ng_cdbp06ng3
+    typeName: oracle_database
+    tags:
+      target_name: cdbp06ng_cdbp06ng3
+      target_type: oracle_database
+      oracle_database: cdbp06ng_cdbp06ng3
+      oracle_dbsys: cdbp06ng_sys
+      rac_database: cdbp06ng
+  - id: E5041BBC1A9015568CFAFA21B1D67442
+    name: cdbp06ng_cdbp06ng1
+    typeName: oracle_database
+    tags:
+      target_name: cdbp06ng_cdbp06ng1
+      target_type: oracle_database
+      oracle_database: cdbp06ng_cdbp06ng1
+      oracle_dbsys: cdbp06ng_sys
+      rac_database: cdbp06ng
