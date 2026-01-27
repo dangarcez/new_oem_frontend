@@ -2,13 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from . import cache
 from .mapping import auto_map_system, prepare_targets
 from .oem_pool import close_all_clients, get_client
+from .static import SPAStaticFiles
 from .oem_client import gethash #REMOVER DEPOIS DE USUARIO DE SERVICO  
 from .storage import get_enterprise_manager, get_site_config, load_enterprise_managers, upsert_site_config
 from .utils import ensure_required_tags
@@ -49,6 +53,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 @app.on_event("startup")
@@ -199,3 +204,8 @@ def save_config(payload: SaveConfigRequest) -> dict[str, Any]:
         ensure_required_tags(target)
     site = upsert_site_config(payload.endpointName, targets)
     return site
+
+
+FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/", SPAStaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
