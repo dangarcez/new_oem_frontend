@@ -8,7 +8,8 @@ from pydantic import BaseModel, Field
 
 from . import cache
 from .mapping import auto_map_system, prepare_targets
-from .oem_client import OEMClient
+from .oem_pool import close_all_clients, get_client
+from .oem_client import gethash #REMOVER DEPOIS DE USUARIO DE SERVICO  
 from .storage import get_enterprise_manager, get_site_config, load_enterprise_managers, upsert_site_config
 from .utils import ensure_required_tags
 
@@ -52,7 +53,13 @@ app.add_middleware(
 
 @app.on_event("startup")
 def _startup() -> None:
+    print(gethash())#REMOVER DEPOIS DE USUARIO DE SERVICO  
     cache.init_db()
+
+
+@app.on_event("shutdown")
+def _shutdown() -> None:
+    close_all_clients()
 
 
 @app.get("/api/enterprise-managers")
@@ -84,12 +91,7 @@ def refresh_targets(endpointName: str) -> dict[str, Any]:
     if not manager:
         raise HTTPException(status_code=404, detail="Endpoint nao encontrado")
 
-    client = OEMClient(
-        endpoint=manager.get("endpoint"),
-        user=manager.get("user"),
-        password=manager.get("password"),
-        verify_ssl=bool(manager.get("verify_ssl", False)),
-    )
+    client = get_client(manager)
 
     try:
         raw_items = client.get_all_targets()
@@ -131,12 +133,7 @@ def get_target_properties(endpointName: str, targetId: str) -> dict[str, Any]:
     if not manager:
         raise HTTPException(status_code=404, detail="Endpoint nao encontrado")
 
-    client = OEMClient(
-        endpoint=manager.get("endpoint"),
-        user=manager.get("user"),
-        password=manager.get("password"),
-        verify_ssl=bool(manager.get("verify_ssl", False)),
-    )
+    client = get_client(manager)
 
     try:
         data = client.get_target_properties(targetId)
@@ -153,12 +150,7 @@ def prepare_targets_endpoint(payload: PrepareTargetsRequest) -> dict[str, Any]:
         raise HTTPException(status_code=404, detail="Endpoint nao encontrado")
 
     cached_targets = cache.get_all_targets(payload.endpointName)
-    client = OEMClient(
-        endpoint=manager.get("endpoint"),
-        user=manager.get("user"),
-        password=manager.get("password"),
-        verify_ssl=bool(manager.get("verify_ssl", False)),
-    )
+    client = get_client(manager)
 
     prepared = prepare_targets(cached_targets, [t.model_dump() for t in payload.targets], client)
     return {"targets": prepared}
@@ -177,12 +169,7 @@ def auto_map(payload: AutoMapRequest) -> dict[str, Any]:
     if not root_exists:
         raise HTTPException(status_code=404, detail="Target raiz nao encontrado no cache")
 
-    client = OEMClient(
-        endpoint=manager.get("endpoint"),
-        user=manager.get("user"),
-        password=manager.get("password"),
-        verify_ssl=bool(manager.get("verify_ssl", False)),
-    )
+    client = get_client(manager)
 
     mapped = auto_map_system(cached_targets, payload.rootName, payload.rootType, client)
     return {"targets": mapped}

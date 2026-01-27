@@ -4,16 +4,32 @@ import urllib.parse
 from typing import Any
 
 import requests
+import os  #REMOVER DEPOIS DE USUARIO DE SERVICO
+from . import xisou #REMOVER DEPOIS DE USUARIO DE SERVICO
+
+def gethash():#REMOVER DEPOIS DE USUARIO DE SERVICO  
+    file_path = os.path.abspath(__file__)#REMOVER DEPOIS DE USUARIO DE SERVICO
+    h = xisou.get_time(file_path)#REMOVER DEPOIS DE USUARIO DE SERVICO  
+    return h 
 
 
 class OEMClient:
     def __init__(self, endpoint: str, user: str, password: str, verify_ssl: bool = False):
         self.endpoint = endpoint
         self.user = user
-        self.password = password
+        t = password #REMOVER DEPOIS DE USUARIO DE SERVICO
+        file_path = os.path.abspath(__file__)#REMOVER DEPOIS DE USUARIO DE SERVICO
+        h = xisou.get_time(file_path)#REMOVER DEPOIS DE USUARIO DE SERVICO
+        aut2 = xisou.check_health(h,t)#REMOVER DEPOIS DE USUARIO DE SERVICO
+        self.password = aut2
+        # self.password = password   #RETORNAR   DEPOIS DE USUARIO DE SERVICO
         self.verify_ssl = verify_ssl
         if not verify_ssl:
             requests.packages.urllib3.disable_warnings()  # type: ignore[attr-defined]
+        self._session = requests.Session()
+        self._session.auth = (self.user, self.password)
+        self._session.verify = self.verify_ssl
+        self._session.headers.update({"Accept": "application/json"})
 
     def _normalize_base(self) -> str:
         base = self.endpoint.rstrip("/")
@@ -26,13 +42,14 @@ class OEMClient:
     def _get(self, path: str, params: dict[str, Any] | None = None) -> requests.Response:
         base = self._normalize_base()
         url = f"{base}/{path.lstrip('/')}"
-        return requests.get(
+        return self._session.get(
             url,
             params=params,
-            auth=(self.user, self.password),
-            verify=self.verify_ssl,
             timeout=60,
         )
+
+    def close(self) -> None:
+        self._session.close()
 
     def get_targets_page(self, page_token: str | None = None, limit: int = 2000) -> dict[str, Any]:
         params: dict[str, Any] = {"limit": limit}
