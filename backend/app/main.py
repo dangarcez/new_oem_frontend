@@ -4,8 +4,9 @@ from typing import Any
 
 from pathlib import Path
 
+import requests
+
 from fastapi import FastAPI, HTTPException
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
@@ -14,7 +15,14 @@ from .mapping import auto_map_system, prepare_targets
 from .oem_pool import close_all_clients, get_client
 from .static import SPAStaticFiles
 from .oem_client import gethash #REMOVER DEPOIS DE USUARIO DE SERVICO  
-from .storage import get_enterprise_manager, get_site_config, load_enterprise_managers, upsert_site_config
+from .storage import (
+    get_enterprise_manager,
+    get_site_config,
+    load_enterprise_managers,
+    load_metrics_config,
+    save_metrics_config,
+    upsert_site_config,
+)
 from .utils import ensure_required_tags
 
 
@@ -42,6 +50,21 @@ class AutoMapRequest(BaseModel):
 class SaveConfigRequest(BaseModel):
     endpointName: str
     targets: list[TargetItem] = Field(default_factory=list)
+
+
+class MetricConfigItem(BaseModel):
+    metric_group_name: str
+    freq: int
+
+
+class SaveMetricsRequest(BaseModel):
+    metrics: dict[str, list[MetricConfigItem]] = Field(default_factory=dict)
+
+
+class AvailabilityRequest(BaseModel):
+    endpointName: str
+    metricGroupName: str
+    targetType: str
 
 
 app = FastAPI(title="OEM Ingest Config Builder")
@@ -132,6 +155,11 @@ def search_targets(
     return results
 
 
+@app.get("/api/targets/types")
+def list_target_types(endpointName: str) -> list[str]:
+    return cache.list_target_types(endpointName)
+
+
 @app.get("/api/targets/properties")
 def get_target_properties(endpointName: str, targetId: str) -> dict[str, Any]:
     manager = get_enterprise_manager(endpointName)
@@ -194,6 +222,20 @@ def load_config(endpointName: str) -> dict[str, Any]:
     return site
 
 
+@app.get("/api/config/metrics")
+def load_metrics() -> dict[str, Any]:
+    return load_metrics_config()
+
+
+@app.post("/api/config/metrics")
+def save_metrics(payload: SaveMetricsRequest) -> dict[str, Any]:
+    metrics_dict = {
+        target_type: [item.model_dump() for item in items]
+        for target_type, items in payload.metrics.items()
+    }
+    return save_metrics_config(metrics_dict)
+
+
 @app.post("/api/config/targets")
 def save_config(payload: SaveConfigRequest) -> dict[str, Any]:
     if not get_enterprise_manager(payload.endpointName):
@@ -206,6 +248,102 @@ def save_config(payload: SaveConfigRequest) -> dict[str, Any]:
     return site
 
 
+@app.get("/api/metrics/metric-groups")
+def metric_groups(endpointName: str, targetId: str) -> dict[str, Any]:
+    manager = get_enterprise_manager(endpointName)
+    if not manager:
+        raise HTTPException(status_code=404, detail="Endpoint nao encontrado")
+    client = get_client(manager)
+    try:
+        return client.get_metric_groups(targetId, include_metrics=True)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Erro ao consultar metricas: {exc}")
+
+
+@app.get("/api/metrics/latest-data")
+def latest_metric_data(endpointName: str, targetId: str, metricGroupName: str) -> dict[str, Any]:
+    manager = get_enterprise_manager(endpointName)
+    if not manager:
+        raise HTTPException(status_code=404, detail="Endpoint nao encontrado")
+    client = get_client(manager)
+    try:
+        return client.get_latest_metric_data(targetId, metricGroupName)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Erro ao consultar metricas: {exc}")
+
+
+@app.get("/api/metrics/metric-group")
+def metric_group_details(endpointName: str, targetId: str, metricGroupName: str) -> dict[str, Any]:
+    manager = get_enterprise_manager(endpointName)
+    if not manager:
+        raise HTTPException(status_code=404, detail="Endpoint nao encontrado")
+    client = get_client(manager)
+    try:
+        return client.get_metric_group_details(targetId, metricGroupName)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Erro ao consultar grupo de metricas: {exc}")
+
+
+def _classify_latest_data(data: dict[str, Any]) -> str:
+    count = data.get("count")
+    if isinstance(count, int) and count > 0:
+        return "disponivel"
+    items = data.get("items") or []
+    if not items:
+        return "sem_dados"
+    for item in items:
+        metrics = item.get("metrics") or item.get("metricValues") or []
+        if metrics:
+            for metric in metrics:
+                if metric.get("value") is not None:
+                    return "disponivel"
+        datapoints = item.get("datapoints")
+        if datapoints:
+            return "disponivel"
+    return "sem_dados"
+
+
+@app.post("/api/metrics/availability")
+def metric_availability(payload: AvailabilityRequest) -> dict[str, Any]:
+    manager = get_enterprise_manager(payload.endpointName)
+    if not manager:
+        raise HTTPException(status_code=404, detail="Endpoint nao encontrado")
+    site = get_site_config(payload.endpointName)
+    targets = (site or {}).get("targets") or []
+    filtered_targets = [t for t in targets if t.get("typeName") == payload.targetType]
+
+    client = get_client(manager)
+    results = []
+    for target in filtered_targets:
+        status = "indisponivel"
+        try:
+            data = client.get_latest_metric_data(target.get("id"), payload.metricGroupName)
+            status = _classify_latest_data(data)
+        except requests.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 404:
+                status = "indisponivel"
+            else:
+                status = "indisponivel"
+        except Exception:
+            status = "indisponivel"
+        results.append(
+            {
+                "id": target.get("id"),
+                "name": target.get("name"),
+                "typeName": target.get("typeName"),
+                "status": status,
+            }
+        )
+
+    return {
+        "metricGroupName": payload.metricGroupName,
+        "targetType": payload.targetType,
+        "items": results,
+    }
+
+
 FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"
-if FRONTEND_DIR.exists():
-    app.mount("/", SPAStaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+FRONTEND_DIST = FRONTEND_DIR / "dist"
+static_dir = FRONTEND_DIST if FRONTEND_DIST.exists() else FRONTEND_DIR
+if static_dir.exists():
+    app.mount("/", SPAStaticFiles(directory=static_dir, html=True), name="frontend")

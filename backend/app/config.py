@@ -7,5 +7,6 @@ BACKEND_DIR = APP_DIR.parent
 CACHE_ROOT = BACKEND_DIR / "conf"
 TARGETS_YAML = CACHE_ROOT / "targets.yaml"
 ENTERPRISE_MANAGERS_FILE = CACHE_ROOT / "enterprise_manager_urls"
+METRICS_YAML = CACHE_ROOT / "metrics.yaml"
 CACHE_DB = BACKEND_DIR / "data" / "oem_cache.db"
 OEM_CLIENT_TTL_SECONDS = 300

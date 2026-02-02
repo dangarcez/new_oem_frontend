@@ -28,6 +28,8 @@ class OEMClient:
             requests.packages.urllib3.disable_warnings()  # type: ignore[attr-defined]
         self._session = requests.Session()
         self._session.auth = (self.user, self.password)
+        print(self.user)
+        print(self.password)
         self._session.verify = self.verify_ssl
         self._session.headers.update({"Accept": "application/json"})
 
@@ -59,23 +61,51 @@ class OEMClient:
         response.raise_for_status()
         return response.json()
 
+    def _get_by_href(self, href: str) -> requests.Response:
+        if href.startswith("http://") or href.startswith("https://"):
+            url = href
+        else:
+            base = self._normalize_base()
+            parsed_base = urllib.parse.urlparse(base)
+            base_root = f"{parsed_base.scheme}://{parsed_base.netloc}"
+            if href.startswith("/em/api/"):
+                url = f"{base_root}{href}"
+            else:
+                url = f"{base}/{href.lstrip('/')}"
+        return self._session.get(url, timeout=60)
+
     def get_all_targets(self) -> list[dict[str, Any]]:
         items: list[dict[str, Any]] = []
-        page_token: str | None = None
-        while True:
-            data = self.get_targets_page(page_token=page_token)
+        data = self.get_targets_page()
+        items.extend(data.get("items") or [])
+        next_href = ((data.get("links") or {}).get("next") or {}).get("href")
+        while next_href:
+            response = self._get_by_href(next_href)
+            response.raise_for_status()
+            data = response.json()
             items.extend(data.get("items") or [])
             next_href = ((data.get("links") or {}).get("next") or {}).get("href")
-            if not next_href:
-                break
-            parsed = urllib.parse.urlparse(next_href)
-            query = urllib.parse.parse_qs(parsed.query)
-            page_token = (query.get("page") or [None])[0]
-            if not page_token:
-                break
         return items
 
     def get_target_properties(self, target_id: str) -> dict[str, Any]:
         response = self._get(f"targets/{target_id}/properties")
+        response.raise_for_status()
+        return response.json()
+
+    def get_metric_groups(self, target_id: str, include_metrics: bool = True) -> dict[str, Any]:
+        params = {"include": "metrics"} if include_metrics else None
+        response = self._get(f"targets/{target_id}/metricGroups", params=params)
+        response.raise_for_status()
+        return response.json()
+
+    def get_latest_metric_data(self, target_id: str, metric_group_name: str) -> dict[str, Any]:
+        safe_group = urllib.parse.quote(metric_group_name, safe="")
+        response = self._get(f"targets/{target_id}/metricGroups/{safe_group}/latestData")
+        response.raise_for_status()
+        return response.json()
+
+    def get_metric_group_details(self, target_id: str, metric_group_name: str) -> dict[str, Any]:
+        safe_group = urllib.parse.quote(metric_group_name, safe="")
+        response = self._get(f"targets/{target_id}/metricGroups/{safe_group}")
         response.raise_for_status()
         return response.json()

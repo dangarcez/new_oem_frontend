@@ -86,6 +86,7 @@
       host: cadecrk01cl01vm02
       target_name: cadecrk01cl01vm02
       target_type: host
+      random: random
   - id: 1C26C3E5842BE719951B2C24F55D4BA5
     name: LISTENER_cadecrk01cl01vm02.intra.caixa.gov.br
     typeName: oracle_listener

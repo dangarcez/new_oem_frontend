@@ -5,7 +5,7 @@ from typing import Any
 
 import yaml
 
-from .config import ENTERPRISE_MANAGERS_FILE, TARGETS_YAML
+from .config import ENTERPRISE_MANAGERS_FILE, METRICS_YAML, TARGETS_YAML
 from .utils import ensure_required_tags
 
 
@@ -101,3 +101,15 @@ def upsert_site_config(endpoint_name: str, targets: list[dict[str, Any]]) -> dic
 
     _write_yaml(TARGETS_YAML, sites)
     return site_entry
+
+
+def load_metrics_config() -> dict[str, list[dict[str, Any]]]:
+    data = _read_yaml(METRICS_YAML)
+    if not data or not isinstance(data, dict):
+        return {}
+    return data
+
+
+def save_metrics_config(metrics: dict[str, list[dict[str, Any]]]) -> dict[str, list[dict[str, Any]]]:
+    _write_yaml(METRICS_YAML, metrics)
+    return metrics

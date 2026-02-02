@@ -7,8 +7,9 @@ Aplicacao web para construir arquivos de configuracao (YAML) usados pelo OEM_ing
 - `backend/`: API FastAPI, cache SQLite e logica de mapeamento de targets
 - `frontend/`: Vite + React (JavaScript)
 - `backend/conf/targets.yaml`: configuracao atual de targets
+- `backend/conf/metrics.yaml`: configuracao atual de metricas
 - `backend/conf/enterprise_manager_urls`: lista de endpoints OEM e credenciais
-- `oem_rest_api_doc.md`: documentacao resumida da API OEM
+- `docs/oem_rest_api_doc.md`: documentacao resumida da API OEM
 
 ## Backend (FastAPI)
 - Entrada principal: `backend/app/main.py`
@@ -53,6 +54,12 @@ Aplicacao web para construir arquivos de configuracao (YAML) usados pelo OEM_ing
 - `POST /api/targets/prepare`
 - `GET /api/config/targets`
 - `POST /api/config/targets`
+- `GET /api/config/metrics`
+- `POST /api/config/metrics`
+- `GET /api/metrics/metric-groups`
+- `GET /api/metrics/latest-data`
+- `GET /api/metrics/metric-group`
+- `POST /api/metrics/availability`
 
 ### Fluxo de dados (alto nivel)
 1) Usuario escolhe o endpoint OEM.
@@ -80,6 +87,7 @@ Aplicacao web para construir arquivos de configuracao (YAML) usados pelo OEM_ing
 - Nao permite selecionar o mesmo target duas vezes (mensagem temporaria).
 - Nao permite adicionar na configuracao um target ja existente (mensagem temporaria).
 - Botao "Adicionar" individual por target selecionado + botao "Adicionar todos".
+- Botao "Baixar YAML" gera o arquivo de configuracao antes de salvar.
 
 ## Regras importantes
 - Tags obrigatorias sempre: `target_name` e `target_type`.
@@ -101,8 +109,13 @@ Aplicacao web para construir arquivos de configuracao (YAML) usados pelo OEM_ing
 - `/api/targets/search` faz busca local com filtro de nome e tipo.
 
 ### Metricas
-- Pagina de metricas existe apenas como placeholder.
-- Endpoints da API OEM estao documentados em `oem_rest_api_doc.md`.
+- Pagina de metricas com 3 secoes: Disponibilidade, Dados do grupo e Pesquisa.
+- Disponibilidade usa metricas configuradas para checar status por target (disponivel/sem dados/indisponivel).
+- Dados do grupo exibem informacoes do payload e lista de itens formatada (chave/valor).
+- Keys do grupo sao consultadas via `/api/metrics/metric-group` e destacadas na lista.
+- Botao "Ver JSON" abre modal com o payload completo.
+- Configuracao de metricas agrupada por tipo, com frequencia editavel e destaques para novos/alterados.
+- Botao "Baixar YAML" gera `metrics.yaml` com as alteracoes antes de salvar.
 
 ## Como executar
 Backend:

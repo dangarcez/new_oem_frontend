@@ -170,3 +170,13 @@ def search_targets(
         }
         for row in rows
     ]
+
+
+def list_target_types(endpoint_name: str) -> list[str]:
+    conn = _connect()
+    rows = conn.execute(
+        "SELECT DISTINCT type FROM targets WHERE endpoint_name = ? ORDER BY type ASC",
+        (endpoint_name,),
+    ).fetchall()
+    conn.close()
+    return [row["type"] for row in rows if row["type"]]
