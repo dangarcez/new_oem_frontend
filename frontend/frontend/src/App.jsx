@@ -198,6 +198,7 @@ export default function App() {
   const [endpointName, setEndpointName] = useState('')
   const [cacheInfo, setCacheInfo] = useState({ count: 0, lastRefresh: null })
   const [configTargets, setConfigTargets] = useState([])
+  const [configSitesMeta, setConfigSitesMeta] = useState({})
   const [configDirty, setConfigDirty] = useState(false)
   const [expandedTargets, setExpandedTargets] = useState({})
   const [baselineTargets, setBaselineTargets] = useState([])
@@ -234,7 +235,8 @@ export default function App() {
   }
 
   const openProperties = async (target) => {
-    if (!endpointName || !target) return
+    const targetEndpoint = target?._siteName || endpointName
+    if (!targetEndpoint || !target) return
     setPropertiesModal({
       open: true,
       target,
@@ -244,7 +246,9 @@ export default function App() {
     })
     try {
       const data = await fetchJson(
-        `/api/targets/properties?endpointName=${encodeURIComponent(endpointName)}&targetId=${encodeURIComponent(
+        `/api/targets/properties?endpointName=${encodeURIComponent(
+          targetEndpoint
+        )}&targetId=${encodeURIComponent(
           target.id
         )}`
       )
@@ -313,7 +317,16 @@ export default function App() {
   const [metricGroupKeys, setMetricGroupKeys] = useState(null)
   const [metricGroupKeysError, setMetricGroupKeysError] = useState(null)
   const [metricGroupHighlighted, setMetricGroupHighlighted] = useState(null)
+  const [metricGroupAvailability, setMetricGroupAvailability] = useState({})
   const [jsonModal, setJsonModal] = useState({ open: false, data: null })
+  const [metricDetailsModal, setMetricDetailsModal] = useState({
+    open: false,
+    loading: false,
+    error: null,
+    data: null,
+    groupName: '',
+    targetName: '',
+  })
   const [metricsCollapsed, setMetricsCollapsed] = useState({
     availability: false,
     data: false,
@@ -323,12 +336,13 @@ export default function App() {
     groups: false,
     data: false,
     availability: false,
+    groupAvailability: false,
   })
 
   const { newTargetIds, modifiedTargetIds, newTargets, existingTargets } = useMemo(() => {
     const baselineMap = new Map()
     baselineTargets.forEach((target) => {
-      baselineMap.set(target.id, JSON.stringify(normalizeTarget(target)))
+      baselineMap.set(getTargetKey(target), JSON.stringify(normalizeTarget(target)))
     })
 
     const newIds = new Set()
@@ -338,12 +352,13 @@ export default function App() {
 
     configTargets.forEach((target) => {
       const normalized = JSON.stringify(normalizeTarget(target))
-      const baseline = baselineMap.get(target.id)
+      const targetKey = getTargetKey(target)
+      const baseline = baselineMap.get(targetKey)
       if (!baseline) {
-        newIds.add(target.id)
+        newIds.add(targetKey)
         freshTargets.push(target)
       } else if (baseline !== normalized) {
-        modifiedIds.add(target.id)
+        modifiedIds.add(targetKey)
         currentTargets.push(target)
       } else {
         currentTargets.push(target)
@@ -477,7 +492,66 @@ export default function App() {
       dg_role: target.dg_role || null,
       listener_name: target.listener_name || null,
       machine_name: target.machine_name || null,
+      siteName: target._siteName || null,
     }
+  }
+
+  function getTargetKey(target) {
+    return target._key || `${target._siteName || 'unknown'}::${target.id}`
+  }
+
+  const flattenConfigSites = (sites) => {
+    const meta = {}
+    const targets = []
+    ;(sites || []).forEach((site) => {
+      const siteName = site?.name || 'unknown'
+      meta[siteName] = {
+        name: siteName,
+        site: site?.site ?? null,
+        endpoint: site?.endpoint ?? null,
+      }
+      ;(site?.targets || []).forEach((target) => {
+        targets.push({
+          ...target,
+          _siteName: siteName,
+          _site: site?.site ?? null,
+          _endpoint: site?.endpoint ?? null,
+          _key: `${siteName}::${target.id}`,
+        })
+      })
+    })
+    return { targets, meta }
+  }
+
+  const buildSitesFromConfigTargets = (targets) => {
+    const siteMap = new Map()
+    Object.values(configSitesMeta).forEach((site) => {
+      siteMap.set(site.name, { ...site, targets: [] })
+    })
+
+    targets.forEach((target) => {
+      const siteName = target._siteName || 'unknown'
+      if (!siteMap.has(siteName)) {
+        siteMap.set(siteName, {
+          name: siteName,
+          site: target._site ?? null,
+          endpoint: target._endpoint ?? null,
+          targets: [],
+        })
+      }
+      const cleanTarget = {
+        id: target.id,
+        name: target.name,
+        typeName: target.typeName,
+        tags: { ...(target.tags || {}) },
+      }
+      if (target.dg_role) cleanTarget.dg_role = target.dg_role
+      if (target.listener_name) cleanTarget.listener_name = target.listener_name
+      if (target.machine_name) cleanTarget.machine_name = target.machine_name
+      siteMap.get(siteName).targets.push(cleanTarget)
+    })
+
+    return Array.from(siteMap.values())
   }
 
   const fetchJson = async (path, options = {}) => {
@@ -511,28 +585,8 @@ export default function App() {
   }
 
   const downloadTargetsYaml = () => {
-    if (!endpointName) return
-    const manager = managers.find((item) => item.name === endpointName) || {}
-    const targets = configTargets.map((target) => {
-      const item = {
-        id: target.id,
-        name: target.name,
-        typeName: target.typeName,
-        tags: { ...(target.tags || {}) },
-      }
-      if (target.dg_role) item.dg_role = target.dg_role
-      if (target.listener_name) item.listener_name = target.listener_name
-      if (target.machine_name) item.machine_name = target.machine_name
-      return item
-    })
-    const data = [
-      {
-        site: manager.site ?? null,
-        endpoint: manager.endpoint ?? null,
-        name: endpointName,
-        targets,
-      },
-    ]
+    if (configTargets.length === 0) return
+    const data = buildSitesFromConfigTargets(configTargets)
     downloadYaml('targets.yaml', data)
   }
 
@@ -540,11 +594,12 @@ export default function App() {
     downloadYaml('metrics.yaml', metricsConfig)
   }
 
-  const loadConfig = async (name) => {
-    if (!name) return
-    const site = await fetchJson(`/api/config/targets?endpointName=${encodeURIComponent(name)}`)
-    setConfigTargets(site.targets || [])
-    setBaselineTargets((site.targets || []).map((item) => ({ ...item, tags: { ...(item.tags || {}) } })))
+  const loadConfig = async () => {
+    const sites = await fetchJson('/api/config/targets/all')
+    const { targets, meta } = flattenConfigSites(sites || [])
+    setConfigSitesMeta(meta)
+    setConfigTargets(targets)
+    setBaselineTargets(targets.map((item) => ({ ...item, tags: { ...(item.tags || {}) } })))
     setConfigDirty(false)
   }
 
@@ -597,7 +652,14 @@ export default function App() {
       }
     } catch (error) {
       console.error(error)
-      const fallback = Array.from(new Set(configTargets.map((item) => item.typeName).filter(Boolean)))
+      const fallback = Array.from(
+        new Set(
+          configTargets
+            .filter((item) => item._siteName === endpointName)
+            .map((item) => item.typeName)
+            .filter(Boolean)
+        )
+      )
       setMetricTypes(fallback)
       if (!metricTargetType && fallback.length > 0) {
         setMetricTargetType(fallback[0])
@@ -653,14 +715,44 @@ export default function App() {
       setMetricGroupHighlighted(null)
       setMetricGroupKeys(null)
       setMetricGroupKeysError(null)
+      setMetricGroupAvailability({})
     } catch (error) {
       console.error(error)
       setMetricGroups([])
       setMetricGroupHighlighted(null)
       setMetricGroupKeys(null)
       setMetricGroupKeysError(null)
+      setMetricGroupAvailability({})
     } finally {
       setMetricsLoading((prev) => ({ ...prev, groups: false }))
+    }
+  }
+
+  const checkMetricGroupsAvailability = async () => {
+    if (!endpointName || !metricTargetSelected || metricGroups.length === 0) return
+    setMetricsLoading((prev) => ({ ...prev, groupAvailability: true }))
+    try {
+      const data = await fetchJson('/api/metrics/availability/target', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpointName,
+          targetId: metricTargetSelected.id,
+          metricGroupNames: metricGroups.map((group) => group.name),
+        }),
+      })
+      const next = {}
+      ;(data.items || []).forEach((item) => {
+        if (item.metricGroupName) {
+          next[item.metricGroupName] = item.status
+        }
+      })
+      setMetricGroupAvailability(next)
+    } catch (error) {
+      console.error(error)
+      setMetricGroupAvailability({})
+    } finally {
+      setMetricsLoading((prev) => ({ ...prev, groupAvailability: false }))
     }
   }
 
@@ -791,14 +883,57 @@ export default function App() {
     setJsonModal({ open: false, data: null })
   }
 
+  const openMetricDetails = async (group) => {
+    if (!endpointName || !metricTargetSelected || !group?.name) return
+    setMetricDetailsModal({
+      open: true,
+      loading: true,
+      error: null,
+      data: null,
+      groupName: group.displayName || group.name,
+      targetName: metricTargetSelected.name,
+    })
+    try {
+      const data = await fetchJson(
+        `/api/metrics/metric-group?endpointName=${encodeURIComponent(
+          endpointName
+        )}&targetId=${encodeURIComponent(metricTargetSelected.id)}&metricGroupName=${encodeURIComponent(group.name)}`
+      )
+      setMetricDetailsModal((prev) => ({ ...prev, loading: false, data }))
+    } catch (error) {
+      console.error(error)
+      let message = 'Erro ao carregar detalhes'
+      if (error?.message) {
+        try {
+          const parsed = JSON.parse(error.message)
+          message = parsed.detail || error.message
+        } catch {
+          message = error.message
+        }
+      }
+      setMetricDetailsModal((prev) => ({ ...prev, loading: false, error: message }))
+    }
+  }
+
+  const closeMetricDetails = () => {
+    setMetricDetailsModal({
+      open: false,
+      loading: false,
+      error: null,
+      data: null,
+      groupName: '',
+      targetName: '',
+    })
+  }
+
   useEffect(() => {
     loadManagers().catch((error) => console.error(error))
     loadMetricsConfig().catch((error) => console.error(error))
+    loadConfig().catch((error) => console.error(error))
   }, [])
 
   useEffect(() => {
     if (!endpointName) return
-    loadConfig(endpointName).catch((error) => console.error(error))
     loadCacheInfo(endpointName).catch((error) => console.error(error))
   }, [endpointName])
 
@@ -887,7 +1022,9 @@ export default function App() {
           setMetricTargetSuggestions([])
         }
       } else {
-        const base = configTargets.filter((item) => item.typeName === metricTargetType)
+        const base = configTargets.filter(
+          (item) => item.typeName === metricTargetType && item._siteName === endpointName
+        )
         const filtered = doSearch
           ? base.filter((item) => item.name?.toLowerCase().includes(trimmed.toLowerCase()))
           : base
@@ -907,6 +1044,7 @@ export default function App() {
     setMetricAvailability([])
     setMetricGroupKeys(null)
     setMetricGroupKeysError(null)
+    setMetricGroupAvailability({})
   }, [metricTargetType, endpointName])
 
   const refreshTargets = async () => {
@@ -953,14 +1091,27 @@ export default function App() {
 
   const addTargetsToConfig = async (items, options = {}) => {
     if (!endpointName || items.length === 0) return
-    const existingIds = new Set(configTargets.map((item) => item.id))
-    const newItems = items.filter((item) => !existingIds.has(item.id))
+    const existingKeys = new Set(configTargets.map((item) => getTargetKey(item)))
+    const newItems = items.filter(
+      (item) => !existingKeys.has(`${endpointName}::${item.id}`)
+    )
     const duplicateCount = items.length - newItems.length
     if (duplicateCount > 0) {
       showNotice('target ja esta na configuracao')
     }
     if (newItems.length === 0) return
     try {
+      const manager = managers.find((item) => item.name === endpointName) || {}
+      if (!configSitesMeta[endpointName]) {
+        setConfigSitesMeta((prev) => ({
+          ...prev,
+          [endpointName]: {
+            name: endpointName,
+            site: manager.site ?? null,
+            endpoint: manager.endpoint ?? null,
+          },
+        }))
+      }
       const payload = {
         endpointName,
         targets: newItems.map((item) => ({
@@ -975,11 +1126,17 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      const prepared = data.targets || []
+      const prepared = (data.targets || []).map((item) => ({
+        ...item,
+        _siteName: endpointName,
+        _site: manager.site ?? null,
+        _endpoint: manager.endpoint ?? null,
+        _key: `${endpointName}::${item.id}`,
+      }))
       setConfigTargets((prev) => {
-        const existing = new Map(prev.map((item) => [item.id, item]))
+        const existing = new Map(prev.map((item) => [getTargetKey(item), item]))
         prepared.forEach((item) => {
-          existing.set(item.id, item)
+          existing.set(getTargetKey(item), item)
         })
         return Array.from(existing.values())
       })
@@ -1031,13 +1188,13 @@ export default function App() {
   }
 
   const saveConfig = async () => {
-    if (!endpointName) return
     setLoading((prev) => ({ ...prev, save: true }))
     try {
-      await fetchJson('/api/config/targets', {
+      const sites = buildSitesFromConfigTargets(configTargets)
+      await fetchJson('/api/config/targets/all', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpointName, targets: configTargets }),
+        body: JSON.stringify({ sites }),
       })
       setConfigDirty(false)
       setBaselineTargets(configTargets.map((item) => ({ ...item, tags: { ...(item.tags || {}) } })))
@@ -1049,39 +1206,44 @@ export default function App() {
     }
   }
 
-  const removeFromConfig = (targetId) => {
-    setConfigTargets((prev) => prev.filter((item) => item.id !== targetId))
+  const removeFromConfig = (targetKey) => {
+    setConfigTargets((prev) => prev.filter((item) => getTargetKey(item) !== targetKey))
     setConfigDirty(true)
   }
 
   const renderConfigCard = (target) => {
-    const isExpanded = !!expandedTargets[target.id]
-    const isNew = newTargetIds.has(target.id)
-    const isModified = !isNew && modifiedTargetIds.has(target.id)
+    const targetKey = getTargetKey(target)
+    const isExpanded = !!expandedTargets[targetKey]
+    const isNew = newTargetIds.has(targetKey)
+    const isModified = !isNew && modifiedTargetIds.has(targetKey)
     const classes = ['card', 'target-card']
     if (!isExpanded) classes.push('collapsed')
     if (isNew) classes.push('new-target')
     if (isModified) classes.push('modified-target')
 
     return (
-      <div className={classes.join(' ')} key={target.id}>
+      <div className={classes.join(' ')} key={targetKey}>
         <button
           type="button"
           className="collapse-toggle"
           onClick={() =>
             setExpandedTargets((prev) => ({
               ...prev,
-              [target.id]: !prev[target.id],
+              [targetKey]: !prev[targetKey],
             }))
           }
         >
-          <span className="target-name">{target.name}</span>
+          <span className="target-name">
+            {target.name}
+            {target._siteName && <span className="target-endpoint"> | {target._siteName}</span>}
+          </span>
         </button>
 
         {isExpanded && (
           <>
             <div className="target-meta">
               <span>ID: {target.id}</span>
+              {target._siteName && <span className="target-site">Endpoint: {target._siteName}</span>}
               {target.dg_role && <span>DG: {target.dg_role}</span>}
               {target.machine_name && <span>Host: {target.machine_name}</span>}
               {target.listener_name && <span>Listener: {target.listener_name}</span>}
@@ -1090,7 +1252,7 @@ export default function App() {
               <button className="ghost" type="button" onClick={() => openProperties(target)}>
                 Propriedades
               </button>
-              <button className="ghost" type="button" onClick={() => removeFromConfig(target.id)}>
+              <button className="ghost" type="button" onClick={() => removeFromConfig(targetKey)}>
                 Remover
               </button>
             </div>
@@ -1099,7 +1261,7 @@ export default function App() {
               lockedKeys={new Set()}
               onChange={(tags) => {
                 setConfigTargets((prev) =>
-                  prev.map((item) => (item.id === target.id ? { ...item, tags } : item))
+                  prev.map((item) => (getTargetKey(item) === targetKey ? { ...item, tags } : item))
                 )
                 setConfigDirty(true)
               }}
@@ -1303,7 +1465,7 @@ export default function App() {
                   <p className="muted">Edite tags, remova targets e salve o YAML.</p>
                 </div>
                 <div className="panel-actions">
-                  <button className="ghost" type="button" onClick={() => loadConfig(endpointName)}>
+                  <button className="ghost" type="button" onClick={loadConfig}>
                     Recarregar YAML
                   </button>
                   <button
@@ -1735,6 +1897,19 @@ export default function App() {
                   </div>
                 )}
 
+                {metricTargetSelected && metricGroups.length > 0 && (
+                  <div className="panel-actions metric-availability-actions">
+                    <button
+                      className="ghost"
+                      type="button"
+                      onClick={checkMetricGroupsAvailability}
+                      disabled={metricsLoading.groupAvailability}
+                    >
+                      {metricsLoading.groupAvailability ? 'Verificando...' : 'Verificar disponibilidade'}
+                    </button>
+                  </div>
+                )}
+
                 {metricsLoading.groups && <p className="muted">Carregando grupos...</p>}
                 {!metricsLoading.groups && metricTargetSelected && metricGroups.length === 0 && (
                   <p className="muted">Nenhum grupo encontrado.</p>
@@ -1744,6 +1919,7 @@ export default function App() {
                   <div className="card-list">
                     {metricGroups.map((group) => {
                       const isExpanded = !!expandedMetricGroups[group.name]
+                      const availabilityStatus = metricGroupAvailability[group.name]
                       return (
                         <div
                           className={`card metric-group-card ${
@@ -1762,7 +1938,18 @@ export default function App() {
                                 }))
                               }
                             >
-                              <span className="target-name">{group.displayName || group.name}</span>
+                              <span className="target-name">
+                                {availabilityStatus && (
+                                  <span
+                                    className={`metric-status-indicator ${availabilityStatus}`}
+                                    title={availabilityStatus.replace('_', ' ')}
+                                  />
+                                )}
+                                {group.displayName || group.name}
+                                {group.name && group.displayName && group.name !== group.displayName && (
+                                  <span className="metric-code"> ({group.name})</span>
+                                )}
+                              </span>
                             </button>
                             <div className="target-actions">
                               <button
@@ -1772,12 +1959,15 @@ export default function App() {
                               >
                                 Adicionar
                               </button>
-                                <button
-                                  className="primary"
-                                  type="button"
-                                  onClick={() => {
-                                    setMetricGroupHighlighted(group.name)
-                                    fetchLatestMetricData(metricTargetSelected, group.name, metricTargetType, {
+                              <button className="ghost" type="button" onClick={() => openMetricDetails(group)}>
+                                Detalhes
+                              </button>
+                              <button
+                                className="primary"
+                                type="button"
+                                onClick={() => {
+                                  setMetricGroupHighlighted(group.name)
+                                  fetchLatestMetricData(metricTargetSelected, group.name, metricTargetType, {
                                       expandAvailability: true,
                                       clearAvailability: true,
                                     })
@@ -1792,8 +1982,12 @@ export default function App() {
                             <div className="metric-metrics">
                               {(group.metrics || []).map((metric) => (
                                 <div className="metric-item" key={metric.id || metric.name}>
-                                  <strong>{metric.displayName || metric.name}</strong>
-                                  <span className="muted">{metric.name}</span>
+                                  <strong>
+                                    {metric.displayName || metric.name}
+                                    {metric.name && metric.displayName && metric.name !== metric.displayName && (
+                                      <span className="metric-code"> ({metric.name})</span>
+                                    )}
+                                  </strong>
                                 </div>
                               ))}
                             </div>
@@ -2027,6 +2221,31 @@ export default function App() {
             </div>
             <div className="modal-body">
               <pre className="code-block">{JSON.stringify(jsonModal.data, null, 2)}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {metricDetailsModal.open && (
+        <div className="modal-backdrop" role="dialog" aria-modal="true">
+          <div className="modal">
+            <div className="modal-header">
+              <div>
+                <h3>Detalhes do grupo de metricas</h3>
+                <p className="muted">
+                  {metricDetailsModal.groupName} | {metricDetailsModal.targetName}
+                </p>
+              </div>
+              <button className="ghost" type="button" onClick={closeMetricDetails}>
+                Fechar
+              </button>
+            </div>
+            <div className="modal-body">
+              {metricDetailsModal.loading && <p className="muted">Carregando...</p>}
+              {metricDetailsModal.error && <p className="warning">{metricDetailsModal.error}</p>}
+              {metricDetailsModal.data && (
+                <pre className="code-block">{JSON.stringify(metricDetailsModal.data, null, 2)}</pre>
+              )}
             </div>
           </div>
         </div>

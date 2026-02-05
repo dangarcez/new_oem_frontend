@@ -249,6 +249,10 @@ input {
   align-items: center;
 }
 
+.metric-availability-actions {
+  margin-bottom: 10px;
+}
+
 .placeholder {
   text-align: center;
 }
@@ -291,6 +295,11 @@ input {
   font-size: 0.78rem;
   color: var(--muted);
   margin: 10px 0;
+}
+
+.target-site {
+  color: var(--accent-2);
+  font-weight: 600;
 }
 
 .tag-editor {
@@ -455,6 +464,13 @@ input {
   padding: 4px 0;
 }
 
+.target-endpoint {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.78rem;
+  opacity: 0.7;
+}
+
 .target-actions {
   display: flex;
   justify-content: flex-end;
@@ -601,6 +617,36 @@ input {
   font-size: 0.78rem;
 }
 
+.metric-code {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+
+.metric-status-indicator {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  border: 1px solid rgba(120, 120, 120, 0.4);
+  background: rgba(120, 120, 120, 0.35);
+  flex-shrink: 0;
+}
+
+.metric-status-indicator.disponivel {
+  border-color: rgba(65, 160, 105, 0.6);
+  background: rgba(65, 160, 105, 0.75);
+}
+
+.metric-status-indicator.sem_dados {
+  border-color: rgba(120, 120, 120, 0.45);
+  background: rgba(120, 120, 120, 0.6);
+}
+
+.metric-status-indicator.indisponivel {
+  border-color: rgba(220, 82, 82, 0.6);
+  background: rgba(220, 82, 82, 0.75);
+}
+
 .metric-config-row {
   display: flex;
   align-items: center;
@@ -699,6 +745,9 @@ input {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .metric-group-header .target-actions {

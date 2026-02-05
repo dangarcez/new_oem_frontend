@@ -103,6 +103,36 @@ def upsert_site_config(endpoint_name: str, targets: list[dict[str, Any]]) -> dic
     return site_entry
 
 
+def save_sites_config(sites: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized_sites: list[dict[str, Any]] = []
+    for site in sites:
+        normalized_targets: list[dict[str, Any]] = []
+        for target in site.get("targets") or []:
+            item = {
+                "id": target.get("id"),
+                "name": target.get("name"),
+                "typeName": target.get("typeName"),
+            }
+            for extra_key in ("dg_role", "listener_name", "machine_name"):
+                if target.get(extra_key) is not None:
+                    item[extra_key] = target.get(extra_key)
+            item["tags"] = dict(target.get("tags") or {})
+            ensure_required_tags(item)
+            normalized_targets.append(item)
+
+        normalized_sites.append(
+            {
+                "site": site.get("site"),
+                "endpoint": site.get("endpoint"),
+                "name": site.get("name"),
+                "targets": normalized_targets,
+            }
+        )
+
+    _write_yaml(TARGETS_YAML, normalized_sites)
+    return normalized_sites
+
+
 def load_metrics_config() -> dict[str, list[dict[str, Any]]]:
     data = _read_yaml(METRICS_YAML)
     if not data or not isinstance(data, dict):

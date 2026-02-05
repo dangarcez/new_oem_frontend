@@ -19,7 +19,9 @@ from .storage import (
     get_enterprise_manager,
     get_site_config,
     load_enterprise_managers,
+    load_targets_config,
     load_metrics_config,
+    save_sites_config,
     save_metrics_config,
     upsert_site_config,
 )
@@ -52,6 +54,17 @@ class SaveConfigRequest(BaseModel):
     targets: list[TargetItem] = Field(default_factory=list)
 
 
+class SiteConfig(BaseModel):
+    site: str | None = None
+    endpoint: str | None = None
+    name: str
+    targets: list[TargetItem] = Field(default_factory=list)
+
+
+class SaveAllConfigRequest(BaseModel):
+    sites: list[SiteConfig] = Field(default_factory=list)
+
+
 class MetricConfigItem(BaseModel):
     metric_group_name: str
     freq: int
@@ -65,6 +78,12 @@ class AvailabilityRequest(BaseModel):
     endpointName: str
     metricGroupName: str
     targetType: str
+
+
+class MetricGroupsAvailabilityRequest(BaseModel):
+    endpointName: str
+    targetId: str
+    metricGroupNames: list[str] = Field(default_factory=list)
 
 
 app = FastAPI(title="OEM Ingest Config Builder")
@@ -222,6 +241,11 @@ def load_config(endpointName: str) -> dict[str, Any]:
     return site
 
 
+@app.get("/api/config/targets/all")
+def load_all_configs() -> list[dict[str, Any]]:
+    return load_targets_config()
+
+
 @app.get("/api/config/metrics")
 def load_metrics() -> dict[str, Any]:
     return load_metrics_config()
@@ -246,6 +270,21 @@ def save_config(payload: SaveConfigRequest) -> dict[str, Any]:
         ensure_required_tags(target)
     site = upsert_site_config(payload.endpointName, targets)
     return site
+
+
+@app.post("/api/config/targets/all")
+def save_all_config(payload: SaveAllConfigRequest) -> list[dict[str, Any]]:
+    sites = []
+    for site in payload.sites:
+        sites.append(
+            {
+                "site": site.site,
+                "endpoint": site.endpoint,
+                "name": site.name,
+                "targets": [t.model_dump() for t in site.targets],
+            }
+        )
+    return save_sites_config(sites)
 
 
 @app.get("/api/metrics/metric-groups")
@@ -340,6 +379,31 @@ def metric_availability(payload: AvailabilityRequest) -> dict[str, Any]:
         "targetType": payload.targetType,
         "items": results,
     }
+
+
+@app.post("/api/metrics/availability/target")
+def metric_availability_for_target(payload: MetricGroupsAvailabilityRequest) -> dict[str, Any]:
+    manager = get_enterprise_manager(payload.endpointName)
+    if not manager:
+        raise HTTPException(status_code=404, detail="Endpoint nao encontrado")
+
+    client = get_client(manager)
+    results = []
+    for group_name in payload.metricGroupNames:
+        status = "indisponivel"
+        try:
+            data = client.get_latest_metric_data(payload.targetId, group_name)
+            status = _classify_latest_data(data)
+        except requests.HTTPError as exc:
+            if exc.response is not None and exc.response.status_code == 404:
+                status = "indisponivel"
+            else:
+                status = "indisponivel"
+        except Exception:
+            status = "indisponivel"
+        results.append({"metricGroupName": group_name, "status": status})
+
+    return {"items": results}
 
 
 FRONTEND_DIR = Path(__file__).resolve().parents[1] / "frontend"

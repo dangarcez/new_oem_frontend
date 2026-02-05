@@ -28,8 +28,6 @@ class OEMClient:
             requests.packages.urllib3.disable_warnings()  # type: ignore[attr-defined]
         self._session = requests.Session()
         self._session.auth = (self.user, self.password)
-        print(self.user)
-        print(self.password)
         self._session.verify = self.verify_ssl
         self._session.headers.update({"Accept": "application/json"})
 
@@ -102,7 +100,23 @@ class OEMClient:
         safe_group = urllib.parse.quote(metric_group_name, safe="")
         response = self._get(f"targets/{target_id}/metricGroups/{safe_group}/latestData")
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        items: list[dict[str, Any]] = []
+        if isinstance(data, dict):
+            items.extend(data.get("items") or [])
+            next_href = ((data.get("links") or {}).get("next") or {}).get("href")
+            while next_href:
+                page_response = self._get_by_href(next_href)
+                page_response.raise_for_status()
+                page_data = page_response.json()
+                if isinstance(page_data, dict):
+                    items.extend(page_data.get("items") or [])
+                    next_href = ((page_data.get("links") or {}).get("next") or {}).get("href")
+                else:
+                    next_href = None
+            data["items"] = items
+            data["count"] = len(items)
+        return data
 
     def get_metric_group_details(self, target_id: str, metric_group_name: str) -> dict[str, Any]:
         safe_group = urllib.parse.quote(metric_group_name, safe="")

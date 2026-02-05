@@ -240,6 +240,43 @@ Campos como `count`, `items`, `links`, `metricGroupName` são descritos no schem
 
 ---
 
+### Query Parameter: `limit`
+
+**Descrição**
+- O parâmetro de query `limit` permite **limitar a quantidade de linhas (items)** retornadas pela operação.
+- É especialmente útil para **metric groups com chaves**, onde o endpoint pode retornar múltiplas linhas.
+
+**Comportamento**
+- Quando especificado, o Oracle Enterprise Manager retorna **no máximo N itens** no array `items`.
+- Quando não especificado, o endpoint retorna **50 items disponiveis** para o último ciclo de coleta.
+
+**Exemplo de uso**
+```
+GET /em/api/targets/{targetId}/metricGroups/{metricGroupName}/latestData?limit=10
+```
+
+**Exemplo (Python)**
+```python
+target_id = "CF99A10F233254B78ED96ED1B5C15140"
+metric_group = "CPU"
+limit = 10
+
+url = (
+    BASE_METRICS
+    + f"targets/{target_id}/metricGroups/{metric_group}/latestData"
+    + f"?limit={limit}"
+)
+
+r = get(url)
+latest = r.json()
+```
+
+**Observações importantes**
+- O parâmetro `limit` **não altera o período de coleta**, apenas restringe a quantidade de registros retornados.
+- A ordenação dos itens segue a lógica interna do OEM para o metric group (normalmente baseada nas chaves do grupo).
+- O campo `count` da resposta reflete a quantidade de itens retornados após a aplicação do `limit`.
+
+
 # 2) Target
 
 A documentação lista **6 endpoints** em *Target*. 
