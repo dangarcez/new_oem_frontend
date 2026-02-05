@@ -1243,7 +1243,6 @@ export default function App() {
           <>
             <div className="target-meta">
               <span>ID: {target.id}</span>
-              {target._siteName && <span className="target-site">Endpoint: {target._siteName}</span>}
               {target.dg_role && <span>DG: {target.dg_role}</span>}
               {target.machine_name && <span>Host: {target.machine_name}</span>}
               {target.listener_name && <span>Listener: {target.listener_name}</span>}
