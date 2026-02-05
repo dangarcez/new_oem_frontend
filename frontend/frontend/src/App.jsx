@@ -19,6 +19,13 @@ function toTagEntries(tags) {
   return Object.entries(tags || {})
 }
 
+function isRateLimitError(error) {
+  if (!error) return false
+  if (error.rateLimit) return true
+  const message = typeof error === 'string' ? error : error.message
+  return typeof message === 'string' && message.toLowerCase().includes('rate limit')
+}
+
 function yamlScalar(value) {
   if (value === null || value === undefined) return 'null'
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
@@ -555,10 +562,49 @@ export default function App() {
   }
 
   const fetchJson = async (path, options = {}) => {
-    const response = await fetch(`${NORMALIZED_API_BASE}${path}`, options)
+    let response
+    try {
+      response = await fetch(`${NORMALIZED_API_BASE}${path}`, options)
+    } catch (error) {
+      const message = 'Falha ao conectar com o servidor.'
+      if (path.startsWith('/api/metrics')) {
+        showMetricsNotice(message)
+      } else {
+        showNotice(message)
+      }
+      const err = new Error(message)
+      err.rateLimit = false
+      throw err
+    }
     if (!response.ok) {
-      const message = await response.text()
-      throw new Error(message || 'Erro na API')
+      const contentType = response.headers.get('content-type') || ''
+      const rawText = await response.text()
+      let detail = rawText || 'Erro na API'
+      if (contentType.includes('application/json') && rawText) {
+        try {
+          const parsed = JSON.parse(rawText)
+          detail = parsed.detail || rawText
+        } catch {
+          detail = rawText || 'Erro na API'
+        }
+      }
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After')
+        const message = retryAfter ? `${detail} Tente novamente em ${retryAfter}s.` : detail
+        if (path.startsWith('/api/metrics')) {
+          showMetricsNotice(message)
+        } else {
+          showNotice(message)
+        }
+        const err = new Error(message)
+        err.rateLimit = true
+        err.retryAfter = retryAfter
+        throw err
+      }
+      if (detail && detail.startsWith('{')) {
+        throw new Error(detail)
+      }
+      throw new Error(JSON.stringify({ detail }))
     }
     return response.json()
   }
@@ -635,6 +681,7 @@ export default function App() {
       setMetricsDirty(false)
     } catch (error) {
       console.error(error)
+      if (isRateLimitError(error)) return
       alert('Erro ao salvar metricas')
     } finally {
       setMetricsLoading((prev) => ({ ...prev, config: false }))
@@ -1057,6 +1104,7 @@ export default function App() {
       await loadCacheInfo(endpointName)
     } catch (error) {
       console.error(error)
+      if (isRateLimitError(error)) return
       alert('Erro ao atualizar targets')
     } finally {
       setLoading((prev) => ({ ...prev, refresh: false }))
@@ -1149,6 +1197,7 @@ export default function App() {
       }
     } catch (error) {
       console.error(error)
+      if (isRateLimitError(error)) return
       alert('Erro ao adicionar targets')
     }
   }
@@ -1181,6 +1230,7 @@ export default function App() {
       }
     } catch (error) {
       console.error(error)
+      if (isRateLimitError(error)) return
       alert('Erro ao gerar sistema')
     } finally {
       setLoading((prev) => ({ ...prev, system: false }))
@@ -1200,6 +1250,7 @@ export default function App() {
       setBaselineTargets(configTargets.map((item) => ({ ...item, tags: { ...(item.tags || {}) } })))
     } catch (error) {
       console.error(error)
+      if (isRateLimitError(error)) return
       alert('Erro ao salvar configuracao')
     } finally {
       setLoading((prev) => ({ ...prev, save: false }))

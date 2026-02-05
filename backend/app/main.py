@@ -6,13 +6,18 @@ from pathlib import Path
 
 import requests
 
-from fastapi import FastAPI, HTTPException
+import json
+import math
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 from . import cache
 from .mapping import auto_map_system, prepare_targets
 from .oem_pool import close_all_clients, get_client
+from .rate_limit import route_rate_limiter
 from .static import SPAStaticFiles
 from .oem_client import gethash #REMOVER DEPOIS DE USUARIO DE SERVICO  
 from .storage import (
@@ -96,6 +101,48 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+ROUTE_WEIGHTS = {
+    "/api/targets/refresh": 10,
+    "/api/targets/auto-map": 8,
+    "/api/targets/prepare": 6,
+    "/api/targets/properties": 3,
+    "/api/metrics/metric-groups": 4,
+    "/api/metrics/latest-data": 6,
+    "/api/metrics/metric-group": 4,
+    "/api/metrics/availability": 10,
+    "/api/metrics/availability/target": 8,
+}
+
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    weight = ROUTE_WEIGHTS.get(request.url.path)
+    if not weight:
+        return await call_next(request)
+
+    endpoint_name = request.query_params.get("endpointName")
+    if not endpoint_name and request.method in {"POST", "PUT", "PATCH"}:
+        body = await request.body()
+        if body:
+            try:
+                payload = json.loads(body.decode("utf-8"))
+                if isinstance(payload, dict):
+                    endpoint_name = payload.get("endpointName") or payload.get("endpoint_name")
+            except json.JSONDecodeError:
+                endpoint_name = None
+        request._body = body  # type: ignore[attr-defined]
+
+    key = f"{endpoint_name or 'global'}:{request.url.path}"
+    allowed, retry_after = route_rate_limiter.allow(key, tokens=weight)
+    if not allowed:
+        retry_seconds = max(1, int(math.ceil(retry_after)))
+        return JSONResponse(
+            status_code=429,
+            content={"detail": f"Rate limit atingido. Tente novamente em {retry_seconds}s."},
+            headers={"Retry-After": str(retry_seconds)},
+        )
+
+    return await call_next(request)
 
 
 @app.on_event("startup")
