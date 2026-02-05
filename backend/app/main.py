@@ -93,14 +93,6 @@ class MetricGroupsAvailabilityRequest(BaseModel):
 
 app = FastAPI(title="OEM Ingest Config Builder")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 ROUTE_WEIGHTS = {
     "/api/targets/refresh": 10,
     "/api/targets/auto-map": 8,
@@ -116,6 +108,8 @@ ROUTE_WEIGHTS = {
 
 @app.middleware("http")
 async def rate_limit_middleware(request: Request, call_next):
+    if request.method == "OPTIONS":
+        return await call_next(request)
     weight = ROUTE_WEIGHTS.get(request.url.path)
     if not weight:
         return await call_next(request)
@@ -143,6 +137,15 @@ async def rate_limit_middleware(request: Request, call_next):
         )
 
     return await call_next(request)
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 @app.on_event("startup")
